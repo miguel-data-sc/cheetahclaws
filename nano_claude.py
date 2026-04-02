@@ -26,6 +26,9 @@ Slash commands in REPL:
   /thinking   Toggle extended thinking
   /permissions [mode]  Set permission mode
   /cwd [path] Show or change working directory
+  /memory [query]   Show/search persistent memories
+  /skills           List available skills
+  /agents           Show sub-agent tasks
   /exit /quit Exit
 """
 from __future__ import annotations
@@ -376,6 +379,42 @@ def cmd_exit(_args: str, _state, _config) -> bool:
     ok("Goodbye!")
     sys.exit(0)
 
+def cmd_memory(args: str, _state, _config) -> bool:
+    from memory import load_index, search_memory
+    if args:
+        results = search_memory(args)
+        if not results:
+            info(f"No memories matching '{args}'")
+            return True
+        for m in results:
+            info(f"  [{m.type}] {m.name}: {m.description}")
+            info(f"    {m.content[:100]}{'...' if len(m.content) > 100 else ''}")
+        return True
+    entries = load_index()
+    if not entries:
+        info("No memories stored. The model can save memories via MemorySave tool.")
+        return True
+    info(f"  {len(entries)} memories:")
+    for m in entries:
+        info(f"  [{m.type:9s}] {m.name}: {m.description}")
+    return True
+
+def cmd_agents(_args: str, _state, _config) -> bool:
+    try:
+        from tools import _get_agent_manager
+        mgr = _get_agent_manager()
+        tasks = mgr.list_tasks()
+        if not tasks:
+            info("No sub-agent tasks.")
+            return True
+        info(f"  {len(tasks)} sub-agent tasks:")
+        for t in tasks:
+            preview = t.prompt[:40] + ("..." if len(t.prompt) > 40 else "")
+            info(f"  {t.id} [{t.status:9s}] {preview}")
+    except Exception:
+        info("Sub-agent system not initialized.")
+    return True
+
 def cmd_skills(_args: str, _state, _config) -> bool:
     from skills import load_skills
     skills = load_skills()
@@ -403,6 +442,8 @@ COMMANDS = {
     "permissions": cmd_permissions,
     "cwd":         cmd_cwd,
     "skills":      cmd_skills,
+    "memory":      cmd_memory,
+    "agents":      cmd_agents,
     "exit":        cmd_exit,
     "quit":        cmd_exit,
 }
