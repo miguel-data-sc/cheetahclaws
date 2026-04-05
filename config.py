@@ -24,8 +24,8 @@ DEFAULTS = {
     "max_tool_output":  32000,
     "max_agent_depth":  3,
     "max_concurrent_agents": 3,
-    "session_daily_limit":   5,    # max sessions kept per day in daily/
-    "session_history_limit": 100,  # max sessions kept in history.json
+    "session_daily_limit":   10,    # max sessions kept per day in daily/
+    "session_history_limit": 200,  # max sessions kept in history.json
     # Per-provider API keys (optional; env vars take priority)
     # "anthropic_api_key": "sk-ant-..."
     # "openai_api_key":    "sk-..."
