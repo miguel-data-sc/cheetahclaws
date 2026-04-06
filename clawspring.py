@@ -1005,9 +1005,32 @@ def cmd_thinking(_args: str, _state, config) -> bool:
 def cmd_permissions(args: str, _state, config) -> bool:
     from config import save_config
     modes = ["auto", "accept-all", "manual"]
+    mode_desc = {
+        "auto":       "Prompt for each tool call (default)",
+        "accept-all": "Allow all tool calls silently",
+        "manual":     "Prompt for each tool call (strict)",
+    }
     if not args.strip():
-        info(f"Permission mode: {config.get('permission_mode','auto')}")
-        info(f"Available modes: {', '.join(modes)}")
+        current = config.get("permission_mode", "auto")
+        print(clr("\n  ── Permission Mode ──", "dim"))
+        for i, m in enumerate(modes):
+            marker = clr("●", "green") if m == current else clr("○", "dim")
+            print(f"  {marker} {clr(f'[{i+1}]', 'yellow')} {clr(m, 'cyan')}  {clr(mode_desc[m], 'dim')}")
+        print()
+        try:
+            ans = input(clr("  Select a mode number or Enter to cancel > ", "cyan")).strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            return True
+        if not ans:
+            return True
+        if ans.isdigit() and 1 <= int(ans) <= len(modes):
+            m = modes[int(ans) - 1]
+            config["permission_mode"] = m
+            save_config(config)
+            ok(f"Permission mode set to: {m}")
+        else:
+            err(f"Invalid selection.")
     else:
         m = args.strip()
         if m not in modes:
