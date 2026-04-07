@@ -474,9 +474,11 @@ def _bash(command: str, timeout: int = 30) -> str:
         shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, cwd=os.getcwd(),
     )
-    # On Unix, create a process group so we can kill the whole tree
+    # On Unix, create a process group so we can kill the whole tree.
+    # start_new_session=True is equivalent to setsid but safe in multithreaded code
+    # (preexec_fn=os.setsid can deadlock when other threads hold locks at fork time).
     if _sys.platform != "win32":
-        kwargs["preexec_fn"] = os.setsid
+        kwargs["start_new_session"] = True
     try:
         proc = subprocess.Popen(command, **kwargs)
         try:

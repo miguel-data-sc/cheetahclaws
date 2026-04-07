@@ -308,9 +308,14 @@ def transcribe_audio_file(
     # Try ffmpeg conversion → local STT
     try:
         pcm = _audio_file_to_pcm(audio_bytes, suffix)
-        return transcribe(pcm, language=language)
     except (RuntimeError, FileNotFoundError):
-        pass
+        pcm = None
+
+    if pcm is not None:
+        try:
+            return transcribe(pcm, language=language)
+        except RuntimeError:
+            pass  # local STT backend failed, fall through to cloud API
 
     # Fallback: OpenAI Whisper API accepts OGG directly
     if os.environ.get("OPENAI_API_KEY"):

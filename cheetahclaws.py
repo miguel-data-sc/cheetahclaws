@@ -2117,7 +2117,7 @@ def _tg_poll_loop(token: str, chat_id: int, config: dict):
                             file_path = file_info["result"]["file_path"]
                             import urllib.request, base64
                             url = f"https://api.telegram.org/file/bot{token}/{file_path}"
-                            with urllib.request.urlopen(url) as resp:
+                            with urllib.request.urlopen(url, timeout=30) as resp:
                                 img_bytes = resp.read()
                             b64 = base64.b64encode(img_bytes).decode("utf-8")
                             size_kb = len(img_bytes) / 1024
@@ -2142,7 +2142,7 @@ def _tg_poll_loop(token: str, chat_id: int, config: dict):
                             file_path = file_info["result"]["file_path"]
                             import urllib.request
                             url = f"https://api.telegram.org/file/bot{token}/{file_path}"
-                            with urllib.request.urlopen(url) as resp:
+                            with urllib.request.urlopen(url, timeout=30) as resp:
                                 audio_bytes = resp.read()
                             size_kb = len(audio_bytes) / 1024
                             _tg_send(token, chat_id, f"🎙 Voice received ({duration}s, {size_kb:.0f} KB) — transcribing...")
