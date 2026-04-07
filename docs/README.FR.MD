@@ -2,7 +2,7 @@ English | [中文](https://github.com/SafeRL-Lab/clawspring/blob/main/docs/READM
 
 <br>
 
-> Remarque : les blocs de code, commandes, noms de modèles, noms de paquets et chemins de fichiers sont volontairement conservés presque tels quels afin de rester directement utilisables.
+
 
 <div align="center">
   <a href="[https://github.com/SafeRL-Lab/Robust-Gymnasium](https://github.com/SafeRL-Lab/clawspring)">
