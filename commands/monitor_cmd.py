@@ -48,6 +48,11 @@ _BUILTIN_TOPICS = {
     "stock_<TICKER>":  "Stock price & data — e.g. stock_TSLA, stock_AAPL",
     "crypto_<SYMBOL>": "Crypto market data — e.g. crypto_BTC, crypto_ETH",
     "custom:<QUERY>":  "Custom search query — e.g. custom:quantum computing",
+    "research:<QUERY>": (
+        "Full /research pipeline (17 sources, heat table, sparkline) — "
+        "e.g. research:transformer efficiency, or with a window: "
+        "research:30d:RLHF  (range presets: 3d, 7d, 30d, 90d, 6m, 1y)"
+    ),
 }
 
 _VALID_SCHEDULES = {"15m", "30m", "1h", "2h", "6h", "12h", "daily", "weekly"}
@@ -73,9 +78,10 @@ def _parse_subscribe_args(args: str):
             schedule = p.lower()
         i += 1
 
-    # Handle "custom:query with spaces" — rejoin if topic starts with "custom:"
-    if topic and topic.lower() == "custom:" and i < len(parts):
-        topic = "custom:" + " ".join(parts[1:])
+    # Handle "custom:query with spaces" / "research:query with spaces" — rejoin
+    for prefix in ("custom:", "research:"):
+        if topic and topic.lower() == prefix and i < len(parts):
+            topic = prefix + " ".join(parts[1:])
 
     return topic, schedule, channels
 
@@ -227,6 +233,7 @@ _WIZARD_TOPICS = [
     ("stock_",       "Stock",         "Stock price & data   (enter ticker, e.g. TSLA)"),
     ("crypto_",      "Crypto",        "Crypto market data   (BTC · ETH · SOL · ...)"),
     ("custom:",      "Custom query",  "Monitor any topic    (e.g. 'quantum computing')"),
+    ("research:",    "Trend tracker", "Full 17-source /research brief with heat table (weekly trend mode)"),
 ]
 
 _WIZARD_SCHEDULES = [
@@ -328,7 +335,7 @@ def _wizard_add_subscription(config: dict, prefill: str = "") -> None:
         print(clr("│", "dim") + f"  {clr(str(i)+'.', 'bold')}  {clr(label, 'cyan'):<16} {desc}")
     _footer()
 
-    raw = _wizard_ask("  » Choose [1-5]: ", config) if not prefill else prefill
+    raw = _wizard_ask(f"  » Choose [1-{len(_WIZARD_TOPICS)}]: ", config) if not prefill else prefill
 
     topic = None
     if raw.isdigit() and 1 <= int(raw) <= len(_WIZARD_TOPICS):

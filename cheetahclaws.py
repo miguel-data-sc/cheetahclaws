@@ -220,6 +220,8 @@ from commands.agent_cmd import cmd_agent
 # ── Monitor / Subscribe commands ──────────────────────────────────────────
 from commands.monitor_cmd import cmd_subscribe, cmd_subscriptions, cmd_unsubscribe, cmd_monitor
 
+from commands.research_cmd import cmd_research, cmd_reports
+
 # ── Tools / thread-local bridge state ─────────────────────────────────────
 from tools import (
     ask_input_interactive,
@@ -372,6 +374,8 @@ COMMANDS = {
     "subs":        cmd_subscriptions,
     "unsubscribe": cmd_unsubscribe,
     "monitor":     cmd_monitor,
+    "research":    cmd_research,
+    "reports":     cmd_reports,
     "compact":     cmd_compact,
     "init":        cmd_init,
     "export":      cmd_export,

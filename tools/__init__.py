@@ -30,6 +30,8 @@ from tools.shell import _bash, _grep, _kill_proc_tree, _has_rg  # noqa: F401
 
 from tools.web import _webfetch, _websearch  # noqa: F401
 
+from tools.research import _research  # noqa: F401
+
 from tools.notebook import _notebook_edit, _parse_cell_id  # noqa: F401
 
 from tools.diagnostics import (  # noqa: F401
@@ -160,6 +162,104 @@ TOOL_SCHEMAS = [
                 "query": {"type": "string"},
             },
             "required": ["query"],
+        },
+    },
+    {
+        "name": "Research",
+        "description": (
+            "Research a topic across up to 11 sources in parallel "
+            "(arXiv, Semantic Scholar, OpenAlex, HackerNews, GitHub, Reddit, "
+            "StackOverflow, Google News, Polymarket, SEC EDGAR, Tavily, Brave). "
+            "Returns a synthesized markdown brief with TL;DR, per-domain "
+            "findings, minority views, open questions, and numbered citations. "
+            "Use this instead of WebSearch when the agent needs current, "
+            "engagement-ranked information — academic papers with citation "
+            "counts, GitHub repos with star counts, HN threads with points, "
+            "SEC filings, prediction market odds, etc. "
+            "Domains are auto-classified from the topic; override with "
+            "`domains` or pick explicit `sources`."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "topic": {"type": "string", "description": "Natural-language query"},
+                "domains": {
+                    "type": "array",
+                    "items": {"type": "string",
+                              "enum": ["academic", "tech", "finance",
+                                       "news", "social", "web"]},
+                    "description": "Restrict to these domains. Omit for auto-classification.",
+                },
+                "sources": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Explicit source names (overrides domains).",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max results per source (default 15).",
+                },
+                "synthesize": {
+                    "type": "boolean",
+                    "description": "Run model synthesis (default true).",
+                },
+                "use_cache": {
+                    "type": "boolean",
+                    "description": "Use 24h cache (default true).",
+                },
+                "time_range": {
+                    "type": "string",
+                    "description": (
+                        "Preset time window: 1d, 3d, 7d, 30d, 90d, 6m, 1y, "
+                        "2y, 5y, all, or natural forms like '30days', "
+                        "'6months', '2years'. Affects arXiv submittedDate, "
+                        "HN created_at, GitHub pushed, Reddit t, Tavily "
+                        "start_published_date, etc."
+                    ),
+                },
+                "since": {
+                    "type": "string",
+                    "description": "ISO date (YYYY-MM-DD) lower bound. Overrides time_range.",
+                },
+                "until": {
+                    "type": "string",
+                    "description": "ISO date (YYYY-MM-DD) upper bound. Overrides time_range.",
+                },
+                "analyze_citations": {
+                    "type": "boolean",
+                    "description": (
+                        "If true, run secondary Semantic Scholar queries on "
+                        "top academic results to surface notable citing "
+                        "authors (default 10k-citation threshold). Adds "
+                        "2-5 extra API calls per run."
+                    ),
+                },
+                "citation_threshold": {
+                    "type": "integer",
+                    "description": "Min total citations for a citer to be notable (default 10000).",
+                },
+                "expand": {
+                    "type": "integer",
+                    "description": (
+                        "If > 0, ask the active model to propose N related "
+                        "subqueries (2-6) and merge their results for broader "
+                        "coverage. Adds ~1 LLM call and N×source_count HTTP "
+                        "calls. Default 0 (disabled)."
+                    ),
+                },
+                "save_as": {
+                    "type": "string",
+                    "description": "Also copy the rendered brief to this path (absolute or ~-relative).",
+                },
+                "auto_save": {
+                    "type": "boolean",
+                    "description": (
+                        "Auto-save to ~/.cheetahclaws/research_reports/ "
+                        "(default true)."
+                    ),
+                },
+            },
+            "required": ["topic"],
         },
     },
     {
@@ -446,6 +546,28 @@ def _register_builtins() -> None:
             name="WebSearch",
             schema=_schemas["WebSearch"],
             func=lambda p, c: _websearch(p["query"]),
+            read_only=True, concurrent_safe=True,
+        ),
+        ToolDef(
+            name="Research",
+            schema=_schemas["Research"],
+            func=lambda p, c: _research(
+                topic=p["topic"],
+                domains=p.get("domains"),
+                sources=p.get("sources"),
+                limit=p.get("limit", 15),
+                synthesize=p.get("synthesize", True),
+                use_cache=p.get("use_cache", True),
+                time_range=p.get("time_range"),
+                since=p.get("since"),
+                until=p.get("until"),
+                analyze_citations=p.get("analyze_citations", False),
+                citation_threshold=p.get("citation_threshold", 10000),
+                expand=p.get("expand", 0),
+                save_as=p.get("save_as"),
+                auto_save=p.get("auto_save", True),
+                config=c,
+            ),
             read_only=True, concurrent_safe=True,
         ),
         ToolDef(

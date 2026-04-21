@@ -362,6 +362,74 @@ def fetch_custom(query: str) -> dict:
     }
 
 
+# ── research:QUERY — multi-source research brief ───────────────────────────
+
+def fetch_research(query: str, time_range_token: str = "7d") -> dict:
+    """Run the full /research pipeline for this query, return formatted brief.
+
+    Used by `research:<topic>` subscriptions for weekly trend tracking.
+    Default window is last 7 days (a `/monitor` subscription running
+    weekly covers the week's new material).
+    """
+    try:
+        from research import research, build_time_range
+        from research.synthesizer import (
+            format_heat_table, format_publication_trend,
+            format_publication_sparkline, render_citations,
+        )
+    except ImportError as e:
+        return {"topic": f"research:{query}", "source": "research",
+                "items": [], "error": f"research module unavailable: {e}"}
+
+    try:
+        tr = build_time_range(range_token=time_range_token)
+    except ValueError:
+        tr = build_time_range(range_token="7d")
+
+    try:
+        brief = research(
+            topic=query, time_range=tr,
+            synthesize=False,       # monitor summarizer does its own pass
+            use_cache=True,
+            limit=8,                # tighter per-source for digest use
+        )
+    except Exception as e:
+        return {"topic": f"research:{query}", "source": "research",
+                "items": [],
+                "error": f"research run failed: {type(e).__name__}: {e}"}
+
+    # Flatten to monitor's item shape: {title, url, summary, date}
+    items = []
+    for r in brief.results[:25]:
+        items.append({
+            "title": f"[{r.source}] {r.title}"[:200],
+            "url": r.url,
+            "summary": (
+                (f"{r.engagement_label} · " if r.engagement_label else "")
+                + (r.snippet or "")
+            )[:400],
+            "date": r.published,
+        })
+
+    # Attach heat table + sparkline as an extra digest item for the summarizer
+    spark = format_publication_sparkline(brief, buckets=12)
+    heat = format_heat_table(brief)
+    if items and heat:
+        items.insert(0, {
+            "title": f"Cross-platform heat ({tr.label})",
+            "url": "",
+            "summary": (spark + "\n\n" + heat)[:1200],
+            "date": "",
+        })
+
+    return {
+        "topic": f"research:{query}",
+        "source": f"research pipeline ({tr.label})",
+        "items": items,
+        "error": None if items else "No results found across 17 sources",
+    }
+
+
 # ── Dispatch ───────────────────────────────────────────────────────────────
 
 def fetch(topic: str) -> dict:
@@ -376,5 +444,18 @@ def fetch(topic: str) -> dict:
         return fetch_world_news()
     if topic.startswith("custom:"):
         return fetch_custom(topic[7:])
+    if topic.startswith("research:"):
+        # research:<topic>  OR  research:<range>:<topic>  (e.g. research:30d:LLM)
+        body = topic[9:]
+        maybe_range, _, rest = body.partition(":")
+        from research.time_range import _PRESET_DAYS
+        if maybe_range in _PRESET_DAYS and rest:
+            data = fetch_research(rest, time_range_token=maybe_range)
+        else:
+            data = fetch_research(body, time_range_token="7d")
+        # Preserve the original subscription topic string so the
+        # scheduler/notifier routes reports back to the right sub.
+        data["topic"] = topic
+        return data
     return {"topic": topic, "source": "unknown", "items": [],
             "error": f"Unknown topic type: {topic}"}

@@ -490,6 +490,9 @@ def cmd_ssj(args: str, state, config) -> bool:
         + "\n│  " + clr("13.", "bold") + " 📡  Monitor — AI subscriptions & alerts"
         + ("\n│  " + clr("14.", "bold") + " 📈  Trading — Market analysis, backtest & trading agent" if _TRADING_AVAILABLE else "")
         + "\n│  " + clr("15.", "bold") + " 🤖  Agent  — Autonomous task agents (research / bug-fix / code / write)"
+        + "\n│  " + clr("16.", "bold") + " 🔍  Research — 20-source topic search (arXiv · HN · GitHub · Zhihu · B站 · Weibo · 小红书 · …)"
+        + "\n│  " + clr("17.", "bold") + " 📊  Trend Track — Auto-rerun /research weekly on a topic (/monitor hookup)"
+        + "\n│  " + clr("18.", "bold") + " 📁  Reports   — Browse saved research briefs"
         + "\n│  " + clr(" 0.", "bold") + " 🚪  Exit SSJ Mode  (or type q)"
         + "\n│"
         + "\n" + clr("╰──────────────────────────────────────────────", "dim")
@@ -617,6 +620,78 @@ def cmd_ssj(args: str, state, config) -> bool:
 
         elif choice == "15":
             return ("__ssj_passthrough__", "/agent")
+
+        elif choice == "16":
+            # 傻瓜式研究向导:问 topic → 可选 range + citations → 直接跑 /research
+            topic = ask_input_interactive(
+                clr("  Topic to research: ", "cyan"), config
+            ).strip()
+            if not topic:
+                err("No topic given.")
+                print(_SSJ_MENU)
+                continue
+            range_menu = clr(
+                "\n  Time range:"
+                "\n    1. Last 7 days"
+                "\n    2. Last 30 days  (default)"
+                "\n    3. Last 6 months"
+                "\n    4. Last 1 year"
+                "\n    5. All time",
+                "cyan",
+            )
+            range_choice = ask_input_interactive(
+                clr("  Range [1-5, Enter for 2]: ", "cyan"), config, range_menu
+            ).strip() or "2"
+            range_map = {"1": "7d", "2": "30d", "3": "6m", "4": "1y", "5": "all"}
+            r = range_map.get(range_choice, "30d")
+            cite_choice = ask_input_interactive(
+                clr("  Include notable-citer analysis? (y/N): ", "cyan"), config
+            ).strip().lower()
+            cmd_line = f"/research --range {r}"
+            if cite_choice.startswith("y"):
+                cmd_line += " --citations"
+            cmd_line += f" {topic}"
+            return ("__ssj_passthrough__", cmd_line)
+
+        elif choice == "17":
+            topic = ask_input_interactive(
+                clr("  Topic to track weekly: ", "cyan"), config
+            ).strip()
+            if not topic:
+                err("No topic given.")
+                print(_SSJ_MENU)
+                continue
+            range_menu = clr(
+                "\n  Tracking window (what each weekly run pulls):"
+                "\n    1. Last 7 days    (default — matches the weekly schedule)"
+                "\n    2. Last 30 days"
+                "\n    3. Last 3 months",
+                "cyan",
+            )
+            rc = ask_input_interactive(
+                clr("  Window [1-3, Enter for 1]: ", "cyan"), config, range_menu
+            ).strip() or "1"
+            rmap = {"1": "7d", "2": "30d", "3": "90d"}
+            rng = rmap.get(rc, "7d")
+            freq_menu = clr(
+                "\n  Frequency:"
+                "\n    1. Daily"
+                "\n    2. Weekly  (default — recommended for trend tracking)"
+                "\n    3. Every 12 hours",
+                "cyan",
+            )
+            fc = ask_input_interactive(
+                clr("  Frequency [1-3, Enter for 2]: ", "cyan"), config, freq_menu
+            ).strip() or "2"
+            freq_map = {"1": "daily", "2": "weekly", "3": "12h"}
+            freq = freq_map.get(fc, "weekly")
+            topic_id = f"research:{rng}:{topic}"
+            cmd_line = f"/subscribe {topic_id} {freq}"
+            ok(f"  Subscribing to {topic_id}  ({freq})")
+            return ("__ssj_passthrough__", cmd_line)
+
+        elif choice == "18":
+            return ("__ssj_passthrough__", "/reports")
 
         else:
             err(f"Invalid choice: {choice}")
